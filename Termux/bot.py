@@ -1,0 +1,7 @@
+son = int(input("son kiriting: "))
+vaqt = int(input("Yana son kiriting: "))
+print ("                 ")
+print ("Yigindisi: ", son+vaqt)
+print ("Ayirmasi: ", son-vaqt)
+print ("Bolinmasi: ", son/vaqt)
+print ("Kupaytmasi: ", son*vaqt)
