@@ -59,8 +59,8 @@ banner() {
     echo -e "${GREEN}
   ██████╗ ███████╗██╗  ██╗    ███╗   ███╗██████╗ ██╗   ██╗███████╗
  ██╔════╝ ██╔════╝██║  ██║    ████╗ ████║██╔══██╗██║   ██║██╔════╝
- ██║  ███╗███████╗███████║    ██╔████╔██║██████╔╝██║   ██║█████╗  
- ██║   ██║╚════██║██╔══██║    ██║╚██╔╝██║██╔══██╗██║   ██║██╔══╝  
+ ██║  ███╗███████╗███████║    ██╔████╔██║██████╔╝██║   ██║█████╗
+ ██║   ██║╚════██║██╔══██║    ██║╚██╔╝██║██╔══██╗██║   ██║██╔══╝
  ╚██████╔╝███████║██║  ██║    ██║ ╚═╝ ██║██████╔╝╚██████╔╝███████╗
   ╚═════╝ ╚══════╝╚═╝  ╚═╝    ╚═╝     ╚═╝╚═════╝  ╚═════╝ ╚══════╝
           ${YELLOW}Haqiqiy SMS Jo'natuvchi — Sizning Raqamingizdan${NC}
@@ -78,8 +78,9 @@ menu() {
     echo "3. Profil"
     echo "4. Statistika"
     echo "5. Ornatishni Tekshirish"
-    echo "6. Haqida"
-    echo "7. Chiqish"
+    echo "6. Kodni yangilash"
+    echo "7. Haqida"
+    echo "8. Chiqish"
     read -p "Tanlov: " ch
 
     case $ch in
@@ -88,8 +89,9 @@ menu() {
         3) profile ;;
         4) stats ;;
         5) check_install ;;
-        6) about ;;
-        7) exit 0 ;;
+        6) update_code ;;
+        7) about ;;
+        8) exit 0 ;;
         *) echo -e "${RED}Noto'g'ri!${NC}"; sleep 1; menu ;;
     esac
 }
@@ -242,6 +244,85 @@ check_install() {
 
     read -p "Menyuga qaytish uchun ENTER..."
     menu
+}
+
+#@doliyevuz manba bilan oling
+update_code() {
+    banner
+    echo -e "${YELLOW}=== Kodni yangilash (@doliyevuz) ===${NC}"
+    REMOTE_URL="https://raw.githubusercontent.com/uz980/Hacker/main/smsbomber.sh"
+    TMP=$(mktemp /tmp/smsupdate.XXXXXX) || TMP="/tmp/smsupdate.$$"
+    BACKUP="$HOME/$(basename "$0").bak.$(date +%Y%m%d%H%M%S)"
+
+    echo "Manba: $REMOTE_URL"
+    echo -n "Yangilashni boshlaysizmi? (y/N): "
+    read -r yn
+    yn=$(echo "$yn" | tr '[:upper:]' '[:lower:]')
+    if [[ "$yn" != "y" && "$yn" != "yes" ]]; then
+        echo "Yangilash bekor qilindi."
+        sleep 1
+        menu
+        return
+    fi
+
+    echo "Yuklanmoqda..."
+    if command -v curl >/dev/null 2>&1; then
+        curl -fsSL "$REMOTE_URL" -o "$TMP"
+        status=$?
+    elif command -v wget >/dev/null 2>&1; then
+        wget -qO "$TMP" "$REMOTE_URL"
+        status=$?
+    else
+        echo -e "${RED}curl yoki wget topilmadi. Iltimos, birini o'rnating.${NC}"
+        sleep 2
+        menu
+        return
+    fi
+
+    if [ $status -ne 0 ] || [ ! -s "$TMP" ]; then
+        echo -e "${RED}❌ Yuklashda xato yuz berdi.${NC}"
+        rm -f "$TMP"
+        sleep 2
+        menu
+        return
+    fi
+
+    if ! grep -qE "REAL SMS BOMBER|@doliyevuz|Haqiqiy SMS Jo'natuvchi" "$TMP"; then
+        echo -e "${RED}❌ Yuklangan fayl kutilgan tarkibga mos kelmadi.${NC}"
+        echo "Faylni ko'rib chiqing: $TMP"
+        read -p "Menyuga qaytish uchun ENTER..."
+        rm -f "$TMP"
+        menu
+        return
+    fi
+
+    echo "Joriy fayl zaxiralanmoqda: $BACKUP"
+    cp -p "$0" "$BACKUP" || {
+        echo -e "${RED}❌ Zaxira olishda xato.${NC}"
+        rm -f "$TMP"
+        sleep 2
+        menu
+        return
+    }
+
+    echo "Skript yangilanmoqda..."
+    cat "$TMP" > "$0" || {
+        echo -e "${RED}❌ Skriptni yangilashda xato.${NC}"
+        echo "Zaxiradan tiklashga harakat qilinmoqda..."
+        cp -p "$BACKUP" "$0"
+        rm -f "$TMP"
+        sleep 2
+        menu
+        return
+    }
+
+    chmod +x "$0"
+    rm -f "$TMP"
+    log "UPDATE | $REMOTE_URL | OK"
+    echo -e "${GREEN}✅ Yangilash muvaffaqiyatli yakunlandi. Zaxira: $BACKUP${NC}"
+    echo "Skript darhol qayta ishga tushiriladi..."
+    sleep 1
+    exec "$0" "$@"
 }
 
 #@doliyevuz manba bilan oling
