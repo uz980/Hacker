@@ -7,8 +7,8 @@ from telethon.tl.functions.messages import SendMessageRequest
 from telethon.errors import SessionPasswordNeededError, ChatNotModifiedError, UserAlreadyParticipantError
 
 # @termux_os manba bolan ol
-API_ID = 24615256        # O'z API ID'ingizni qo'ying
-API_HASH = '8a210e7fb0361891fb1a2776d9806166'  # O'z API Hash'ingizni qo'ying
+API_ID = 16394498        # O'z API ID'ingizni qo'ying
+API_HASH = '1cb17d37aff48c051c83dae4684e8f59'  # O'z API Hash'ingizni qo'ying
 
 # Bot foydalanuvchi nomi
 BOT_USERNAME = "tinglabot"
