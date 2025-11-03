@@ -1,4 +1,5 @@
-from telethon.sync import TelegramClient              from telethon.tl.functions.channels import InviteToChannelRequest
+from telethon.sync import TelegramClient
+from telethon.tl.functions.channels import InviteToChannelRequest
 from telethon.tl.types import InputPeerUser
 from telethon.errors import UserPrivacyRestrictedError, FloodWaitError, UserAlreadyParticipantError
 import time
