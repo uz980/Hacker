@@ -14,7 +14,6 @@ from telethon.errors import (
 # -------------------------------------------------
 API_ID = 22210367
 API_HASH = '29a1097b9da5f9a6e8bafaaee6dc6ae4'
-
 BOT_USERNAME = "tinglabot"          # bot username ( @siz)
 SESSIONS_DIR = "sessions"           # sessiyalar saqlanadigan papka
 
@@ -24,10 +23,8 @@ SESSIONS_DIR = "sessions"           # sessiyalar saqlanadigan papka
 if not os.path.exists(SESSIONS_DIR):
     os.makedirs(SESSIONS_DIR)
 
-
 def clear_screen():
     os.system('cls' if os.name == 'nt' else 'clear')
-
 
 def get_sessions():
     return [
@@ -35,7 +32,6 @@ def get_sessions():
         for f in os.listdir(SESSIONS_DIR)
         if f.endswith('.session')
     ]
-
 
 # -------------------------------------------------
 # AKKAUNT QO‘SHISH / O‘CHIRISH / RO‘YXAT
@@ -70,7 +66,6 @@ async def add_account():
     await client.disconnect()
     input("\nEnter bosing...")
 
-
 def delete_account():
     clear_screen()
     sessions = get_sessions()
@@ -94,7 +89,6 @@ def delete_account():
         print("\nRaqam kiriting!")
     input("\nEnter bosing...")
 
-
 def list_accounts():
     clear_screen()
     sessions = get_sessions()
@@ -106,9 +100,8 @@ def list_accounts():
             print(f"{i}. {s}")
     input("\nEnter bosing...")
 
-
 # -------------------------------------------------
-# BITTA GURUH YARATISH (ichki funksiya)
+# BITTA GURUH YARATISH
 # -------------------------------------------------
 async def create_single_group(client: TelegramClient, group_number: int):
     try:
@@ -150,9 +143,8 @@ async def create_single_group(client: TelegramClient, group_number: int):
     except Exception as e:
         print(f"  ✗ Guruh {group_number} yaratishda xato: {e}")
 
-
 # -------------------------------------------------
-# BITTA AKKAUNT UCHUN GURUHLAR (parallel ichida chaqiriladi)
+# BITTA AKKAUNT UCHUN GURUHLAR
 # -------------------------------------------------
 async def create_groups_for_single_account(session_name: str, num_groups: int, delay: float):
     session_path = os.path.join(SESSIONS_DIR, session_name)
@@ -174,9 +166,8 @@ async def create_groups_for_single_account(session_name: str, num_groups: int, d
     finally:
         await client.disconnect()
 
-
 # -------------------------------------------------
-# GURUH YARATISH – BARCHA AKKAUNTLAR PARALLEL
+# GURUH YARATISH – BARCHA AKKAUNTLAR BLOKLAR BO'YICHA
 # -------------------------------------------------
 async def create_groups():
     clear_screen()
@@ -186,26 +177,44 @@ async def create_groups():
         input("\nEnter bosing...")
         return
 
+    # Akkauntlarni 10 talik bloklarga bo'lish
+    blocks = [sessions[i:i + 10] for i in range(0, len(sessions), 10)]
+    
     print("=== GURUH YARATISH ===")
     for i, s in enumerate(sessions, 1):
         print(f"{i}. {s}")
-    print(f"{len(sessions) + 1}. Barcha akkauntlar")
+    
+    for idx, block in enumerate(blocks, 1):
+        print(f"{idx:02d}. Top {idx} (10 talik)")
 
-    try:
-        choice = int(input("\nRaqam: "))
-        if choice == len(sessions) + 1:
-            selected = sessions
-        elif 1 <= choice <= len(sessions):
-            selected = [sessions[choice - 1]]
+    # Tanlov
+    choice = input("\nRaqam kiriting (yoki blok: 01, 02...): ").strip()
+    
+    # Agar 01,02... formatda bo'lsa
+    if choice.isdigit() and len(choice) == 2:
+        block_idx = int(choice) - 1
+        if 0 <= block_idx < len(blocks):
+            selected = blocks[block_idx]
         else:
-            print("Noto'g'ri tanlov!")
+            print("Noto'g'ri blok raqam!")
             input("\nEnter bosing...")
             return
-    except Exception:
-        print("Raqam kiriting!")
-        input("\nEnter bosing...")
-        return
+    else:
+        # Oddiy akkaunt raqami
+        try:
+            choice_num = int(choice) - 1
+            if 0 <= choice_num < len(sessions):
+                selected = [sessions[choice_num]]
+            else:
+                print("Noto'g'ri akkaunt raqam!")
+                input("\nEnter bosing...")
+                return
+        except ValueError:
+            print("Raqam kiriting!")
+            input("\nEnter bosing...")
+            return
 
+    # Nechta guruh va delay
     try:
         num_groups = int(input("\nNechta guruh yaratmoqchisiz? "))
         if num_groups <= 0:
@@ -227,7 +236,6 @@ async def create_groups():
     print(f"\nBoshlanmoqda... {len(selected)} ta akkaunt, {num_groups} ta guruh, {delay}s oraliq\n")
 
     # ----------------- PARALLEL ISHGA TUSHIRISH -----------------
-    # Bir vaqtda 5 tadan ko‘p ulanmasin (Telegram limitlari uchun)
     semaphore = asyncio.Semaphore(5)
 
     async def limited_task(sess):
@@ -240,7 +248,6 @@ async def create_groups():
 
     print("\nBARCHA GURUHLAR YARATILDI!")
     input("\nEnter bosing...")
-
 
 # -------------------------------------------------
 # ASOSIY MENYU
@@ -256,7 +263,6 @@ def show_menu():
     print("4️⃣  Guruh yaratish (parallel)")
     print("0️⃣  Chiqish")
     print("===================================")
-
 
 async def main():
     while True:
@@ -279,7 +285,6 @@ async def main():
             clear_screen()
             print("Noto'g'ri raqam! Qayta urining.")
             input("\nEnter bosing...")
-
 
 if __name__ == '__main__':
     asyncio.run(main())
