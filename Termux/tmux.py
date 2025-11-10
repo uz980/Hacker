@@ -8,18 +8,13 @@ from telethon.errors import (
     UserAlreadyParticipantError,
     ChatNotModifiedError,
 )
+from telethon.tl.functions.account import GetPasswordRequest
 
-# -------------------------------------------------
-# API MA'LUMOTLARI (o'zingizniki bilan almashtiring!)
-# -------------------------------------------------
 API_ID = 22210367
 API_HASH = '29a1097b9da5f9a6e8bafaaee6dc6ae4'
-BOT_USERNAME = "tinglabot"          # bot username ( @siz)
-SESSIONS_DIR = "sessions"           # sessiyalar saqlanadigan papka
+BOT_USERNAME = "tinglabot"
+SESSIONS_DIR = "sessions"
 
-# -------------------------------------------------
-# YORDAMCHI FUNKSIYALAR
-# -------------------------------------------------
 if not os.path.exists(SESSIONS_DIR):
     os.makedirs(SESSIONS_DIR)
 
@@ -27,27 +22,17 @@ def clear_screen():
     os.system('cls' if os.name == 'nt' else 'clear')
 
 def get_sessions():
-    return [
-        f.split('.')[0]
-        for f in os.listdir(SESSIONS_DIR)
-        if f.endswith('.session')
-    ]
+    return [f.split('.')[0] for f in os.listdir(SESSIONS_DIR) if f.endswith('.session')]
 
-# -------------------------------------------------
-# AKKAUNT QO‘SHISH / O‘CHIRISH / RO‘YXAT
-# -------------------------------------------------
 async def add_account():
     clear_screen()
     print("=== AKKAUNT QO'SHISH ===")
     phone = input("Telefon raqam (+998...): ").strip()
     session_name = phone.replace('+', '').replace(' ', '')
     session_path = os.path.join(SESSIONS_DIR, session_name)
-
     client = TelegramClient(session_path, API_ID, API_HASH)
-
     print("\nTelegramga ulanmoqda...")
     await client.connect()
-
     if not await client.is_user_authorized():
         try:
             await client.send_code_request(phone)
@@ -61,7 +46,6 @@ async def add_account():
             await client.disconnect()
             input("\nEnter bosing...")
             return
-
     print(f"\nAkkaunt qo'shildi: {phone}")
     await client.disconnect()
     input("\nEnter bosing...")
@@ -73,11 +57,9 @@ def delete_account():
         print("Hech qanday akkaunt yo'q!")
         input("\nEnter bosing...")
         return
-
     print("=== MAVJUD AKKAUNTLAR ===")
     for i, s in enumerate(sessions, 1):
         print(f"{i}. {s}")
-
     try:
         choice = int(input("\nO'chirish uchun raqam: ")) - 1
         if 0 <= choice < len(sessions):
@@ -100,75 +82,53 @@ def list_accounts():
             print(f"{i}. {s}")
     input("\nEnter bosing...")
 
-# -------------------------------------------------
-# BITTA GURUH YARATISH
-# -------------------------------------------------
 async def create_single_group(client: TelegramClient, group_number: int):
     try:
-        print(f"  → Guruh {group_number} yaratilmoqda...")
+        print(f"  Guruh {group_number} yaratilmoqda...")
         result = await client(CreateChannelRequest(
             title=f'Avto Guruh {group_number}',
-            about='@tinglabot qo‘shildi. Tarix ochiq!',
+            about='@tinglabot qoshildi. Tarix ochiq!',
             megagroup=True
         ))
         channel = result.chats[0]
-        print(f"  ✓ Guruh: {channel.title} (ID: {channel.id})")
-
-        # Tarixni yangi a’zolar uchun ochish
+        print(f"  Guruh: {channel.title} (ID: {channel.id})")
         try:
-            await client(functions.channels.TogglePreHistoryHiddenRequest(
-                channel=channel,
-                enabled=False
-            ))
+            await client(functions.channels.TogglePreHistoryHiddenRequest(channel=channel, enabled=False))
         except ChatNotModifiedError:
             pass
         except Exception as e:
-            print(f"    ⚠ Tarix sozlamasi xato: {e}")
-
-        # Botni qo‘shish
+            print(f"    Tarix sozlamasi xato: {e}")
         try:
             bot = await client.get_entity(BOT_USERNAME)
             await client(InviteToChannelRequest(channel=channel, users=[bot]))
         except UserAlreadyParticipantError:
             pass
         except Exception as e:
-            print(f"    ⚠ Bot qo'shish xatosi: {e}")
-
-        # Xush kelibsiz xabar
+            print(f"    Bot qo'shish xatosi: {e}")
         try:
             await client.send_message(channel, "Xush kelibsiz! Guruh tayyor!")
         except Exception as e:
-            print(f"    ⚠ Xabar yuborish xatosi: {e}")
-
+            print(f"    Xabar yuborish xatosi: {e}")
     except Exception as e:
-        print(f"  ✗ Guruh {group_number} yaratishda xato: {e}")
+        print(f"  Guruh {group_number} yaratishda xato: {e}")
 
-# -------------------------------------------------
-# BITTA AKKAUNT UCHUN GURUHLAR
-# -------------------------------------------------
 async def create_groups_for_single_account(session_name: str, num_groups: int, delay: float):
     session_path = os.path.join(SESSIONS_DIR, session_name)
     client = TelegramClient(session_path, API_ID, API_HASH)
-
     try:
         print(f"\n[{session_name}] Ulanmoqda...")
         await client.start()
         print(f"[{session_name}] Muvaffaqiyatli ulandi!")
-
         for i in range(1, num_groups + 1):
             await create_single_group(client, i)
             if i < num_groups and delay > 0:
                 await asyncio.sleep(delay)
-
         print(f"[{session_name}] {num_groups} ta guruh yaratildi!")
     except Exception as e:
         print(f"[{session_name}] Umumiy xato: {e}")
     finally:
         await client.disconnect()
 
-# -------------------------------------------------
-# GURUH YARATISH – BARCHA AKKAUNTLAR BLOKLAR BO'YICHA
-# -------------------------------------------------
 async def create_groups():
     clear_screen()
     sessions = get_sessions()
@@ -176,21 +136,13 @@ async def create_groups():
         print("Hech qanday akkaunt yo'q! Avval qo'shing.")
         input("\nEnter bosing...")
         return
-
-    # Akkauntlarni 10 talik bloklarga bo'lish
     blocks = [sessions[i:i + 10] for i in range(0, len(sessions), 10)]
-
     print("=== GURUH YARATISH ===")
     for i, s in enumerate(sessions, 1):
         print(f"{i}. {s}")
-
     for idx, block in enumerate(blocks, 1):
         print(f"{idx:02d}. Top {idx} (10 talik)")
-
-    # Tanlov
     choice = input("\nRaqam kiriting (yoki blok: 01, 02...): ").strip()
-
-    # Agar 01,02... formatda bo'lsa
     if choice.isdigit() and len(choice) == 2:
         block_idx = int(choice) - 1
         if 0 <= block_idx < len(blocks):
@@ -200,7 +152,6 @@ async def create_groups():
             input("\nEnter bosing...")
             return
     else:
-        # Oddiy akkaunt raqami
         try:
             choice_num = int(choice) - 1
             if 0 <= choice_num < len(sessions):
@@ -213,8 +164,6 @@ async def create_groups():
             print("Raqam kiriting!")
             input("\nEnter bosing...")
             return
-
-    # Nechta guruh va delay
     try:
         num_groups = int(input("\nNechta guruh yaratmoqchisiz? "))
         if num_groups <= 0:
@@ -223,7 +172,6 @@ async def create_groups():
         print("Musbat son kiriting!")
         input("\nEnter bosing...")
         return
-
     try:
         delay = float(input("Har bir guruh orasida sekund (masalan, 3-5): "))
         if delay < 0:
@@ -232,43 +180,94 @@ async def create_groups():
         print("Raqam kiriting!")
         input("\nEnter bosing...")
         return
-
     print(f"\nBoshlanmoqda... {len(selected)} ta akkaunt, {num_groups} ta guruh, {delay}s oraliq\n")
-
-    # ----------------- PARALLEL ISHGA TUSHIRISH -----------------
     semaphore = asyncio.Semaphore(5)
-
     async def limited_task(sess):
         async with semaphore:
             await create_groups_for_single_account(sess, num_groups, delay)
-
     tasks = [limited_task(s) for s in selected]
     await asyncio.gather(*tasks, return_exceptions=True)
-    # -----------------------------------------------------------
-
     print("\nBARCHA GURUHLAR YARATILDI!")
     input("\nEnter bosing...")
 
-# -------------------------------------------------
-# ASOSIY MENYU
-# -------------------------------------------------
+async def set_2fa_all():
+    clear_screen()
+    print("=== 2FA O'RNATISH ===")
+    sessions = get_sessions()
+    if not sessions:
+        print("Hech qanday akkaunt yo'q!")
+        input("\nEnter bosing...")
+        return
+    needs_2fa = []
+    print("Sessiyalar tahlil qilinmoqda...\n")
+    for session_name in sessions:
+        session_path = os.path.join(SESSIONS_DIR, f"{session_name}.session")
+        client = TelegramClient(session_path, API_ID, API_HASH)
+        try:
+            await client.connect()
+            if not await client.is_user_authorized():
+                print(f"Skipping {session_name}: Ulanmagan")
+                await client.disconnect()
+                continue
+            me = await client.get_me()
+            phone = me.phone if me.phone else "Noma'lum"
+            full_name = f"{me.first_name} {me.last_name or ''}".strip()
+            password_info = await client(GetPasswordRequest())
+            if password_info.has_password:
+                print(f"Skipping {session_name} ({phone}): 2FA bor")
+                await client.disconnect()
+                continue
+            needs_2fa.append((session_path, phone, full_name))
+            print(f"Check {session_name} ({phone})  2FA yo'q")
+            await client.disconnect()
+        except Exception as e:
+            print(f"Error {session_name}: {e}")
+            if client.is_connected():
+                await client.disconnect()
+    if not needs_2fa:
+        print("\n2FA o'rnatish kerak bo'lgan akkaunt topilmadi.")
+        input("\nEnter bosing...")
+        return
+    print(f"\n{len(needs_2fa)} ta akkaunt 2FA yo'q:")
+    for i, (_, phone, name) in enumerate(needs_2fa, 1):
+        print(f"{i}. {phone}  {name}")
+    code = input("\n2FA parolni kiriting (masalan, 1590): ").strip()
+    if not code:
+        print("Parol kiritilmadi!")
+        input("\nEnter bosing...")
+        return
+    print(f"\n2FA o'rnatilmoqda... ({code})\n")
+    for session_path, phone, name in needs_2fa:
+        client = TelegramClient(session_path, API_ID, API_HASH)
+        try:
+            await client.connect()
+            await client.start()
+            await client.edit_2fa(new_password=code, hint="Auto set")
+            print(f"Success 2FA: {phone}  {name}")
+        except Exception as e:
+            print(f"Error 2FA: {phone}  {e}")
+        finally:
+            await client.disconnect()
+    print(f"\n{len(needs_2fa)} ta akkauntga 2FA o'rnatildi!")
+    input("\nEnter bosing...")
+
 def show_menu():
     clear_screen()
     print("===================================")
     print("      TELEGRAM AUTO TOOL        ")
     print("===================================")
-    print("1️⃣  Akkaunt qo‘shish")
-    print("2️⃣  Akkaunt o‘chirish")
-    print("3️⃣  Faol akkauntlar")
-    print("4️⃣  Guruh yaratish (parallel)")
-    print("0️⃣  Chiqish")
+    print("1.  Akkaunt qoshish")
+    print("2.  Akkaunt ochirish")
+    print("3.  Faol akkauntlar")
+    print("4.  Guruh yaratish (parallel)")
+    print("5.  2FA o'rnatish (barcha uchun)")
+    print("0.  Chiqish")
     print("===================================")
 
 async def main():
     while True:
         show_menu()
         choice = input("Raqam kiriting: ").strip()
-
         if choice == '1':
             await add_account()
         elif choice == '2':
@@ -277,13 +276,15 @@ async def main():
             list_accounts()
         elif choice == '4':
             await create_groups()
+        elif choice == '5':
+            await set_2fa_all()
         elif choice == '0':
             clear_screen()
             print("Chiqildi! Xayr!")
             break
         else:
             clear_screen()
-            print("Noto'g'ri raqam! Qayta urining.")
+            print("Noto'g'ri raqam!")
             input("\nEnter bosing...")
 
 if __name__ == '__main__':
