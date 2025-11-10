@@ -136,14 +136,28 @@ async def create_groups():
         print("Hech qanday akkaunt yo'q! Avval qo'shing.")
         input("\nEnter bosing...")
         return
-    blocks = [sessions[i:i + 10] for i in range(0, len(sessions), 10)]
+
+    # 50 talik bloklar
+    BLOCK_SIZE = 50
+    blocks = [sessions[i:i + BLOCK_SIZE] for i in range(0, len(sessions), BLOCK_SIZE)]
+
     print("=== GURUH YARATISH ===")
     for i, s in enumerate(sessions, 1):
         print(f"{i}. {s}")
+
+    print("\n--- 50 talik bloklar ---")
     for idx, block in enumerate(blocks, 1):
-        print(f"{idx:02d}. Top {idx} (10 talik)")
-    choice = input("\nRaqam kiriting (yoki blok: 01, 02...): ").strip()
-    if choice.isdigit() and len(choice) == 2:
+        print(f"{idx:02d}. Top {idx} ({len(block)} ta)")
+
+    print(f"\n{len(sessions)+1}. BARCHASIDAN yaratish")
+
+    choice = input("\nRaqam kiriting (01, 02... yoki barchasi): ").strip()
+
+    # Barchasidan yaratish
+    if choice == str(len(sessions) + 1):
+        selected = sessions
+    # Blok tanlash
+    elif choice.isdigit() and len(choice) == 2:
         block_idx = int(choice) - 1
         if 0 <= block_idx < len(blocks):
             selected = blocks[block_idx]
@@ -151,6 +165,7 @@ async def create_groups():
             print("Noto'g'ri blok raqam!")
             input("\nEnter bosing...")
             return
+    # Bitta akkaunt
     else:
         try:
             choice_num = int(choice) - 1
@@ -164,6 +179,7 @@ async def create_groups():
             print("Raqam kiriting!")
             input("\nEnter bosing...")
             return
+
     try:
         num_groups = int(input("\nNechta guruh yaratmoqchisiz? "))
         if num_groups <= 0:
@@ -172,21 +188,25 @@ async def create_groups():
         print("Musbat son kiriting!")
         input("\nEnter bosing...")
         return
+
     try:
-        delay = float(input("Har bir guruh orasida sekund (masalan, 3-5): "))
+        delay = float(input("Har bir guruh orasida sekund (3-5): "))
         if delay < 0:
             raise ValueError
     except Exception:
         print("Raqam kiriting!")
         input("\nEnter bosing...")
         return
+
     print(f"\nBoshlanmoqda... {len(selected)} ta akkaunt, {num_groups} ta guruh, {delay}s oraliq\n")
+
     semaphore = asyncio.Semaphore(5)
     async def limited_task(sess):
         async with semaphore:
             await create_groups_for_single_account(sess, num_groups, delay)
     tasks = [limited_task(s) for s in selected]
     await asyncio.gather(*tasks, return_exceptions=True)
+
     print("\nBARCHA GURUHLAR YARATILDI!")
     input("\nEnter bosing...")
 
