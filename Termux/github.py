@@ -258,3 +258,4 @@ if __name__ == "__main__":
         logger.error(f"Dasturda kutilmagan xato: {e}")
         # manba bilan ol ! @termux_os
         
+stop code @shax_mobi
