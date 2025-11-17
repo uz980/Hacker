@@ -81,26 +81,42 @@ async def add_account(phone, accounts):
         await client.disconnect()
 
 # manba bilan ol ! @termux_os
-# === 👥 Guruh yaratish ===
+# === 👥 Guruh yaratish (yangilangan) ===
 async def create_groups(client, count=5, delay=5):
-    """Berilgan sonli guruhlar yaratadi."""
-    try:
-        for i in range(1, count + 1):
-            group_name = f"Avto Guruh #{i}"
-            try:
-                result = await client(functions.messages.CreateChatRequest(
-                    users=[],  # Bo‘sh guruh
-                    title=group_name
-                ))
-                logger.info(f"✅ Guruh yaratildi: {group_name}")
-            except FloodWaitError as e:
-                logger.warning(f"⏳ Flood xatosi: {e.seconds} sekund kutish kerak.")
-                await asyncio.sleep(e.seconds)
-            except Exception as e:
-                logger.error(f"❌ Guruh yaratishda xato: {e}")
-            await asyncio.sleep(delay)
-    except Exception as e:
-        logger.error(f"Guruhlar yaratishda xato: {e}")
+    """Berilgan sonli guruhlar yaratadi va ularga belgilangan botlarni qo'shadi."""
+    bot_usernames = ['@tinglabot', '@oxangbot']
+
+    for i in range(1, count + 1):
+        group_name = f"Avto Guruh #{i}"
+        try:
+            result = await client(functions.messages.CreateChatRequest(
+                users=[],  # Bo‘sh guruh
+                title=group_name
+            ))
+            # Guruh ID sini olish
+            chat = result.chats[0]
+            chat_id = chat.id
+
+            logger.info(f"✅ Guruh yaratildi: {group_name}")
+
+            # Botlarni guruhga qo'shish
+            for bot_username in bot_usernames:
+                try:
+                    await client(functions.channels.InviteToChannelRequest(
+                        channel=chat_id,
+                        users=[bot_username]
+                    ))
+                    logger.info(f"🤖 {bot_username} guruhga qo'shildi: {group_name}")
+                except Exception as e:
+                    logger.error(f"❌ {bot_username} guruhga qo'shishda xato: {e}")
+
+        except FloodWaitError as e:
+            logger.warning(f"⏳ Flood xatosi: {e.seconds} sekund kutish kerak.")
+            await asyncio.sleep(e.seconds)
+        except Exception as e:
+            logger.error(f"❌ Guruh yaratishda xato: {e}")
+
+        await asyncio.sleep(delay)
 
 # manba bilan ol ! @termux_os
 # === 🚀 Akkaunt bilan ishga tushirish ===
@@ -241,3 +257,4 @@ if __name__ == "__main__":
     except Exception as e:
         logger.error(f"Dasturda kutilmagan xato: {e}")
         # manba bilan ol ! @termux_os
+        
