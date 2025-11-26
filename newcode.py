@@ -522,9 +522,9 @@ def show_menu():
     print(Fore.CYAN + Style.BRIGHT + logo)
 
     # Sarlavha
-    print(Fore.WHITE + "â•" * 44)
+    print(Fore.WHITE + "═" * 44)
     print(Fore.CYAN + Style.BRIGHT + "           TELEGRAM PANEL            ".center(44))
-    print(Fore.WHITE + "â•" * 44)
+    print(Fore.WHITE + "═" * 44)
 
     # Menyu elementlari
     menu = [
