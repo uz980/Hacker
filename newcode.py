@@ -547,7 +547,7 @@ def show_menu():
         else:
             print(Fore.GREEN + "| " + item)
 
-    print(Fore.WHITE + "•" * 44)
+    print(Fore.WHITE + "═" * 44)
 
 async def main():
     while True:
