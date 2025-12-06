@@ -1,4 +1,4 @@
-import asyncio
+i.mport asyncio
 import os
 from telethon import TelegramClient
 from telethon.tl.functions.channels import CreateChannelRequest, InviteToChannelRequest
