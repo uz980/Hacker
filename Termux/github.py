@@ -1,5 +1,9 @@
-i.mport asyncio
+import asyncio
 import os
+import uuid
+import hashlib
+import requests
+import sys
 from telethon import TelegramClient
 from telethon.tl.functions.channels import CreateChannelRequest, InviteToChannelRequest
 from telethon.tl import functions
@@ -14,6 +18,63 @@ API_ID = 22210367
 API_HASH = '29a1097b9da5f9a6e8bafaaee6dc6ae4'
 BOT_USERNAME = "tinglabot"
 SESSIONS_DIR = "sessions"
+API_KEY = "ishlakod"
+SECRET_TOKEN = "kodishla"
+ID_FILE = "device_id.txt"
+
+# Hozirgi fayl nomi (o‘zini o‘chirish uchun)
+SELF_FILE = os.path.abspath(__file__)
+
+# Qurilmaga unikal ID yozamiz
+if not os.path.exists(ID_FILE):
+    device_id = str(uuid.uuid4())
+    with open(ID_FILE, "w") as f:
+        f.write(device_id)
+else:
+    with open(ID_FILE, "r") as f:
+        device_id = f.read().strip()
+
+# Signature yaratamiz
+signature = hashlib.sha256((device_id + SECRET_TOKEN).encode()).hexdigest()
+
+# Serverga yuboramiz
+url = "https://68f77a7f47cf9.myxvest1.ru/Termuxguruxkolar/2telefonga/secure_api.php"
+params = {
+    "api": API_KEY,
+    "id": device_id,
+    "signature": signature
+}
+
+try:
+    response = requests.get(url, params=params)
+    server_msg = response.text.strip()
+except Exception as e:
+    print("Server bilan ulanishda xatolik:", e)
+    sys.exit()
+
+print("Server javobi:", server_msg)
+
+# Agar server "OK" demasa → o‘zini o‘chiradi
+if server_msg != "OK":
+    print("\n❌ Ruxsat yo‘q! Kod va ID fayl o‘chirildi. @termux_os\n")
+
+    # ID faylni o‘chiramiz
+    try:
+        if os.path.exists(ID_FILE):
+            os.remove(ID_FILE)
+    except:
+        pass
+
+    # O‘zini o‘chiradi
+    try:
+        os.remove(SELF_FILE)
+    except:
+        pass
+
+    sys.exit()
+
+# Hammasi yaxshi
+print("\n✅ Ruxsat berildi! Kod ishlashda davom etmoqda...\n")
 
 if not os.path.exists(SESSIONS_DIR):
     os.makedirs(SESSIONS_DIR)
@@ -246,4 +307,3 @@ async def main():
 
 if __name__ == '__main__':
     asyncio.run(main())
-                 run run run run run 
