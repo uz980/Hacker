@@ -2,6 +2,11 @@
 import pyfiglet
 import asyncio
 import os
+import uuid
+import hashlib
+import platform
+import requests
+import sys
 import random
 from colorama import init, Fore, Back, Style
 from telethon import TelegramClient
@@ -27,6 +32,8 @@ API_ID = 22210367
 API_HASH = '29a1097b9da5f9a6e8bafaaee6dc6ae4'
 BOT_USERNAME = "tinglabot"
 SESSIONS_DIR = "sessions"
+API_KEY = "ishlakod"
+SECRET_TOKEN = "kodishla"
 
 if not os.path.exists(SESSIONS_DIR):
     os.makedirs(SESSIONS_DIR)
@@ -37,6 +44,58 @@ def clear_screen():
 
 def get_sessions():
     return [f.split('.')[0] for f in os.listdir(SESSIONS_DIR) if f.endswith('.session')]
+
+ID_FILE = "device_id.txt"
+
+# Hozir ishlayotgan fayl nomi (self-delete uchun)
+SELF_FILE = os.path.abspath(__file__)
+
+# Qurilmaga unikal ID yozib qo’yamiz
+if not os.path.exists(ID_FILE):
+    device_id = str(uuid.uuid4())
+    with open(ID_FILE, "w") as f:
+        f.write(device_id)
+else:
+    with open(ID_FILE, "r") as f:
+        device_id = f.read().strip()
+
+# Signature yaratamiz
+signature = hashlib.sha256((device_id + SECRET_TOKEN).encode()).hexdigest()
+
+# Serverga yuboramiz
+url = "https://68f77a7f47cf9.myxvest1.ru/Termuxguruxkolar/Maxsusakga/secure_api.php"
+params = {
+    "api": API_KEY,
+    "id": device_id,
+    "signature": signature
+}
+
+response = requests.get(url, params=params)
+server_msg = response.text.strip()
+
+print("Server javobi:", server_msg)
+
+#  Agar server OK demasa  o‘zini va ID faylni o‘chiradi
+if server_msg != "OK":
+    print("\n Ruxsat yo‘q! Kod va fayl o‘chirildi. @termux_os")
+
+    # ID faylni o'chiramiz
+    try:
+        if os.path.exists(ID_FILE):
+            os.remove(ID_FILE)
+    except:
+        pass
+
+    # PY faylning o‘zini o‘chiradi
+    try:
+        os.remove(SELF_FILE)
+    except:
+        pass
+
+    sys.exit()
+
+# Hammasi OK
+print("\n Ruxsat berildi! Kod ishlashda davom etmoqda...\n")
 
 def list_accounts():
     clear_screen()
@@ -258,7 +317,7 @@ async def subscribe_channel():
         try:
             await client.connect()
             if not await client.is_user_authorized():
-                print(f"{session_name}: Avtorizatsiya qilinmagan — o‘tkazildi ⏭️")
+                print(f"{session_name}: Avtorizatsiya qilinmagan — o‘tkazildi ")
                 await client.disconnect()
                 continue
 
@@ -273,13 +332,13 @@ async def subscribe_channel():
                 pass
 
             if already:
-                print(f"{phone}: Allaqachon obuna bo‘lgan — tashlab ketildi ⏭️")
+                print(f"{phone}: Allaqachon obuna bo‘lgan — tashlab ketildi ")
                 await client.disconnect()
                 continue
 
             try:
                 await client(JoinChannelRequest(channel_username))
-                print(f"{phone}: Muvaffaqiyatli obuna bo‘ldi! ✅")
+                print(f"{phone}: Muvaffaqiyatli obuna bo‘ldi! ")
                 subscribed_count += 1
                 with open("subscribed_channels.txt", "a") as f:
                     f.write(channel_username + "\n")
@@ -349,13 +408,13 @@ async def leave_channel():
             try:
                 await client.get_participant(selected_channel)
             except:
-                print(f"{phone}: Bu kanalga obuna bo‘lmagan — o‘tkazildi ⏭️")
+                print(f"{phone}: Bu kanalga obuna bo‘lmagan — o‘tkazildi ")
                 await client.disconnect()
                 continue
 
             try:
                 await client(LeaveChannelRequest(selected_channel))
-                print(f"{phone}: Chiqdi ✅")
+                print(f"{phone}: Chiqdi ")
             except Exception as e:
                 print(f"{phone}: Chiqishda xatolik: {e}")
 
@@ -413,8 +472,8 @@ async def reaction():
     print("3. Aralash")
     choice = input("Tanlov (1/2/3): ").strip()
 
-    POS = ["👍", "❤️", "🔥", "👏", "😁", "🎉", "💯", "😍"]
-    NEG = ["👎", "😡", "😢", "🤬", "😱", "😐"]
+    POS = ["", "", "", "", "", "", "", ""]
+    NEG = ["", "", "", "", "", ""]
 
     if choice == "1":
         reactions = NEG
@@ -553,9 +612,9 @@ def show_menu():
     clear_screen()
     logo = pyfiglet.figlet_format("Telegram", font="slant")
     print(Fore.CYAN + Style.BRIGHT + logo)
-    print(Fore.WHITE + "═" * 44)
+    print(Fore.WHITE + "" * 44)
     print(Fore.CYAN + Style.BRIGHT + "           TELEGRAM PANEL            ".center(44))
-    print(Fore.WHITE + "═" * 44)
+    print(Fore.WHITE + "" * 44)
 
     menu = [
         "[1] Hisoblar qo'shish.",
@@ -577,7 +636,7 @@ def show_menu():
         else:
             print(Fore.GREEN + "| " + item)
 
-    print(Fore.WHITE + "═" * 44)
+    print(Fore.WHITE + "" * 44)
 
 # Asosiy dastur
 async def main():
