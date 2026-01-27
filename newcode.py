@@ -2,16 +2,10 @@
 import pyfiglet
 import asyncio
 import os
-import uuid
-import hashlib
-import platform
-import requests
-import sys
 import random
 from colorama import init, Fore, Back, Style
 
 from telethon import TelegramClient, functions
-
 from telethon.tl.functions.channels import (
     CreateChannelRequest,
     InviteToChannelRequest,
@@ -22,22 +16,24 @@ from telethon.tl.functions.channels import (
     EditAdminRequest,
     EditCreatorRequest
 )
-
 from telethon.tl.functions.messages import (
     SendReactionRequest,
     ExportChatInviteRequest
 )
-
 from telethon.tl.functions.account import GetPasswordRequest
-
 from telethon.tl.types import ReactionEmoji, ChatAdminRights
-
 from telethon.errors import (
     SessionPasswordNeededError,
     UserAlreadyParticipantError,
     ChatNotModifiedError,
+    PasswordHashInvalidError,
+    UsernameInvalidError,
+    UsernameNotOccupiedError,
+    UserPrivacyRestrictedError,
+    UserNotMutualContactError,
+    ChatAdminRequiredError,
+    FloodWaitError
 )
-
 from telethon.password import compute_check
 
 # Sozlamalar
@@ -45,8 +41,6 @@ API_ID = 22210367
 API_HASH = '29a1097b9da5f9a6e8bafaaee6dc6ae4'
 BOT_USERNAME = "tinglabot"
 SESSIONS_DIR = "sessions"
-API_KEY = "ishlakod"
-SECRET_TOKEN = "kodishla"
 
 if not os.path.exists(SESSIONS_DIR):
     os.makedirs(SESSIONS_DIR)
@@ -330,7 +324,7 @@ async def subscribe_channel():
         try:
             await client.connect()
             if not await client.is_user_authorized():
-                print(f"{session_name}: Avtorizatsiya qilinmagan — o‘tkazildi ")
+                print(f"{session_name}: Avtorizatsiya qilinmagan — o'tkazildi ")
                 await client.disconnect()
                 continue
 
@@ -345,18 +339,18 @@ async def subscribe_channel():
                 pass
 
             if already:
-                print(f"{phone}: Allaqachon obuna bo‘lgan — tashlab ketildi ")
+                print(f"{phone}: Allaqachon obuna bo'lgan — tashlab ketildi ")
                 await client.disconnect()
                 continue
 
             try:
                 await client(JoinChannelRequest(channel_username))
-                print(f"{phone}: Muvaffaqiyatli obuna bo‘ldi! ")
+                print(f"{phone}: Muvaffaqiyatli obuna bo'ldi! ")
                 subscribed_count += 1
                 with open("subscribed_channels.txt", "a") as f:
                     f.write(channel_username + "\n")
             except Exception as e:
-                print(f"{phone}: Obuna bo‘lmadi: {e}")
+                print(f"{phone}: Obuna bo'lmadi: {e}")
 
         except Exception as e:
             print(f"{session_name}: Xatolik: {e}")
@@ -365,7 +359,7 @@ async def subscribe_channel():
             if client.is_connected():
                 await client.disconnect()
 
-    print(f"\nJami {subscribed_count} ta akkaunt {channel_username} kanaliga obuna bo‘ldi.")
+    print(f"\nJami {subscribed_count} ta akkaunt {channel_username} kanaliga obuna bo'ldi.")
     input("\nEnter bosing...")
 
 # Kanaldan chiqish
@@ -382,7 +376,7 @@ async def leave_channel():
         channels = list(set([x.strip() for x in f.readlines() if x.strip()]))
 
     if not channels:
-        print("Ro‘yxatda hech qanday kanal yo‘q!")
+        print("Ro'yxatda hech qanday kanal yo'q!")
         input("\nEnter bosing...")
         return
 
@@ -396,7 +390,7 @@ async def leave_channel():
         if choice < 1 or choice > len(channels):
             raise ValueError
     except:
-        print("Noto‘g‘ri tanlov!")
+        print("Noto'g'ri tanlov!")
         input("\nEnter bosing...")
         return
 
@@ -421,7 +415,7 @@ async def leave_channel():
             try:
                 await client.get_participant(selected_channel)
             except:
-                print(f"{phone}: Bu kanalga obuna bo‘lmagan — o‘tkazildi ")
+                print(f"{phone}: Bu kanalga obuna bo'lmagan — o'tkazildi ")
                 await client.disconnect()
                 continue
 
@@ -619,8 +613,8 @@ async def set_2fa_all():
             await client.disconnect()
     print(f"\n{len(needs_2fa)} ta akkauntga 2FA o'rnatildi!")
     input("\nEnter bosing...")
-    
-async def transfer_ownership(entity, user):
+
+async def transfer_ownership(client, entity, user):
     try:
         pwd = await client(functions.account.GetPasswordRequest())
         password = input("🔐 2-step verification parolingiz: ")
@@ -633,14 +627,14 @@ async def transfer_ownership(entity, user):
             password=password_hash
         ))
 
-        print("👑 Owner huquqi o‘tkazildi!")
+        print("👑 Owner huquqi o'tkazildi!")
 
     except PasswordHashInvalidError:
-        print("❌ Parol noto‘g‘ri")
+        print("❌ Parol noto'g'ri")
     except Exception as e:
-        print("⚠ Owner o‘tkazishda xato:", e)
+        print("⚠ Owner o'tkazishda xato:", e)
 
-async def is_admin(entity):
+async def is_admin(client, entity):
     try:
         me = await client.get_me()
         p = await client(GetParticipantRequest(entity, me.id))
@@ -648,115 +642,190 @@ async def is_admin(entity):
     except:
         return False
 
+# Session tanlash uchun funksiya
+async def select_session():
+    sessions = get_sessions()
+    if not sessions:
+        print("Hech qanday session yo'q!")
+        return None
+    
+    clear_screen()
+    print("=== SESSION TANLASH ===")
+    for i, s in enumerate(sessions, 1):
+        print(f"{i}. {s}")
+    
+    choice = input("\nSessionni tanlang (raqam): ").strip()
+    try:
+        idx = int(choice) - 1
+        if 0 <= idx < len(sessions):
+            return sessions[idx]
+    except:
+        pass
+    print("Noto'g'ri tanlov!")
+    return None
 
-# Guruhlarni ko‘rsatish
+# Guruhlarni ko'rsatish
 async def list_groups():
-    dialogs = await client.get_dialogs()
-    total = 0
-    admin_count = 0
+    session_name = await select_session()
+    if not session_name:
+        input("\nEnter bosing...")
+        return
+    
+    session_path = os.path.join(SESSIONS_DIR, f"{session_name}.session")
+    client = TelegramClient(session_path, API_ID, API_HASH)
+    
+    try:
+        await client.start()
+        
+        dialogs = await client.get_dialogs()
+        total = 0
+        admin_count = 0
 
-    for d in dialogs:
-        if d.is_group:
-            total += 1
-            entity = d.entity
-            admin = await is_admin(entity)
+        print(f"\n=== {session_name} GURUHLARI ===\n")
+        
+        for d in dialogs:
+            if d.is_group:
+                total += 1
+                entity = d.entity
+                admin = await is_admin(client, entity)
 
-            group_type = "Public" if entity.username else "Private"
+                group_type = "Public" if entity.username else "Private"
 
-            print("\n📌 Nomi:", d.name)
-            print("ID:", entity.id)
-            print("Turi:", group_type)
+                print(f"📌 Nomi: {d.name}")
+                print(f"ID: {entity.id}")
+                print(f"Turi: {group_type}")
 
-            if admin:
-                admin_count += 1
-                print("Status: ADMIN")
+                if admin:
+                    admin_count += 1
+                    print("Status: ADMIN")
 
-                if not entity.username:
-                    try:
-                        link = await client(ExportChatInviteRequest(entity))
-                        print("Invite link:", link.link)
-                    except:
-                        print("Invite link olinmadi")
-            else:
-                print("Status: Oddiy a'zo")
+                    if not entity.username:
+                        try:
+                            link = await client(ExportChatInviteRequest(entity))
+                            print(f"Invite link: {link.link}")
+                        except:
+                            print("Invite link olinmadi")
+                else:
+                    print("Status: Oddiy a'zo")
+                print("-" * 40)
 
-    print(f"\nJami guruhlar soni: {total}")
-    print(f"Admin bo‘lgan guruhlar: {admin_count}")
+        print(f"\nJami guruhlar soni: {total}")
+        print(f"Admin bo'lgan guruhlar: {admin_count}")
+        
+    except Exception as e:
+        print(f"Xatolik: {e}")
+    finally:
+        await client.disconnect()
+    
+    input("\nEnter bosing...")
 
-
-# Guruhlarni boshqa userga o‘tkazish
+# Guruhlarni boshqa userga o'tkazish
 async def transfer_groups():
+    session_name = await select_session()
+    if not session_name:
+        input("\nEnter bosing...")
+        return
+    
     username = input("Username kiriting (@user123): ").strip()
-    count = int(input("Nechta guruhni o‘tkazmoqchisiz?: "))
+    if not username:
+        print("Username kiritilmadi!")
+        input("\nEnter bosing...")
+        return
+    
+    try:
+        count = int(input("Nechta guruhni o'tkazmoqchisiz?: "))
+    except:
+        print("Raqam kiritish kerak!")
+        input("\nEnter bosing...")
+        return
+    
     owner_choice = input("Owner ham qilinsinmi? (y/n): ").lower()
 
+    session_path = os.path.join(SESSIONS_DIR, f"{session_name}.session")
+    client = TelegramClient(session_path, API_ID, API_HASH)
+    
     try:
-        user = await client.get_entity(username)
-    except UsernameInvalidError:
-        print("❌ Username noto‘g‘ri")
-        return
-    except UsernameNotOccupiedError:
-        print("❌ Bunday user mavjud emas")
-        return
-
-    dialogs = await client.get_dialogs()
-    done = 0
-
-    for d in dialogs:
-        if done >= count:
-            break
-        if not d.is_group:
-            continue
-
-        entity = d.entity
-
-        if not await is_admin(entity):
-            continue
-
+        await client.start()
+        
+        # Userni olish
         try:
-            print(f"\n➡ {d.name} guruhiga qo‘shilmoqda...")
-
-            await client(InviteToChannelRequest(entity, [user]))
-            print("👤 User qo‘shildi")
-            await asyncio.sleep(2)
-
-            rights = ChatAdminRights(
-                change_info=True,
-                post_messages=True,
-                edit_messages=True,
-                delete_messages=True,
-                ban_users=True,
-                invite_users=True,
-                pin_messages=True,
-                add_admins=True,
-                anonymous=False,
-                manage_call=True,
-                other=True
-            )
-
-            await client(EditAdminRequest(entity, user, rights, "Full Admin"))
-            print("✅ To‘liq admin qilindi")
-
-            # 👑 Owner qilish
-            if owner_choice == "y":
-                await transfer_ownership(entity, user)
-
-            done += 1
-            await asyncio.sleep(5)
-
-        except UserPrivacyRestrictedError:
-            print("❌ User maxfiylik sabab qo‘shilmadi")
-        except UserNotMutualContactError:
-            print("❌ User kontakt emas")
-        except ChatAdminRequiredError:
-            print("❌ Yetarli admin huquq yo‘q")
-        except FloodWaitError as e:
-            print(f"⏳ Flood: {e.seconds} soniya")
-            await asyncio.sleep(e.seconds)
+            user = await client.get_entity(username)
+            print(f"User topildi: {user.first_name}")
         except Exception as e:
-            print("⚠ Xatolik:", e)
+            print(f"User topilmadi: {e}")
+            await client.disconnect()
+            input("\nEnter bosing...")
+            return
 
-    print(f"\n🏁 Tugadi. {done} ta guruh bajarildi.")
+        dialogs = await client.get_dialogs()
+        done = 0
+
+        print(f"\n{count} ta guruhni {username} ga o'tkazish boshlanmoqda...\n")
+
+        for d in dialogs:
+            if done >= count:
+                break
+            if not d.is_group:
+                continue
+
+            entity = d.entity
+
+            if not await is_admin(client, entity):
+                continue
+
+            try:
+                print(f"\n➡ {d.name} guruhiga qo'shish...")
+
+                await client(InviteToChannelRequest(entity, [user]))
+                print("👤 User qo'shildi")
+                await asyncio.sleep(2)
+
+                rights = ChatAdminRights(
+                    change_info=True,
+                    post_messages=True,
+                    edit_messages=True,
+                    delete_messages=True,
+                    ban_users=True,
+                    invite_users=True,
+                    pin_messages=True,
+                    add_admins=True,
+                    anonymous=False,
+                    manage_call=True,
+                    other=True
+                )
+
+                await client(EditAdminRequest(entity, user, rights, "Full Admin"))
+                print("✅ To'liq admin qilindi")
+
+                # Owner qilish
+                if owner_choice == 'y':
+                    await transfer_ownership(client, entity, user)
+                    print("👑 Owner huquqi berildi")
+
+                done += 1
+                print(f"{done}/{count} - {d.name} o'tkazildi")
+                await asyncio.sleep(5)
+
+            except UserPrivacyRestrictedError:
+                print("❌ User maxfiylik sabab qo'shilmadi")
+            except UserNotMutualContactError:
+                print("❌ User kontakt emas")
+            except ChatAdminRequiredError:
+                print("❌ Yetarli admin huquq yo'q")
+            except FloodWaitError as e:
+                print(f"⏳ Flood: {e.seconds} soniya")
+                await asyncio.sleep(e.seconds)
+            except Exception as e:
+                print(f"⚠ Xatolik: {e}")
+
+        print(f"\n🏁 Tugadi. {done} ta guruh bajarildi.")
+        
+    except Exception as e:
+        print(f"Umumiy xatolik: {e}")
+    finally:
+        await client.disconnect()
+    
+    input("\nEnter bosing...")
 
 # Menyu
 def show_menu():
@@ -776,13 +845,15 @@ def show_menu():
         "[6] Kanalga azo.",
         "[7] Aytgan kanallardan chiqish.",
         "[8] Reaksiya qo'shish.",
+        "[9] Gurux utkazish",
+        "[10] Guruhlarni ko'rish",
         "[0] Chiqish"
     ]
 
     for item in menu:
         if "[7]" in item or "[0]" in item:
             print(Fore.RED + Style.BRIGHT + "| " + item)
-        elif "[5]" in item or "[99]" in item:
+        elif "[5]" in item or "[9]" in item or "[10]" in item:
             print(Fore.MAGENTA + Style.BRIGHT + "| " + item)
         else:
             print(Fore.GREEN + "| " + item)
@@ -794,6 +865,7 @@ async def main():
     while True:
         show_menu()
         choice = input("Raqam kiriting: ").strip()
+        
         if choice == '1':
             await add_account()
         elif choice == '2':
@@ -811,7 +883,9 @@ async def main():
         elif choice == '8':
             await reaction()
         elif choice == '9':
-        	await transfer_groups()
+            await transfer_groups()
+        elif choice == '10':
+            await list_groups()
         elif choice == '0':
             clear_screen()
             print("Chiqildi! Xayr!")
