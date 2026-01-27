@@ -9,23 +9,36 @@ import requests
 import sys
 import random
 from colorama import init, Fore, Back, Style
-from telethon import TelegramClient
+
+from telethon import TelegramClient, functions
+
 from telethon.tl.functions.channels import (
     CreateChannelRequest,
     InviteToChannelRequest,
     JoinChannelRequest,
     LeaveChannelRequest,
     TogglePreHistoryHiddenRequest,
+    GetParticipantRequest,
+    EditAdminRequest,
+    EditCreatorRequest
 )
-from telethon.tl.functions.messages import SendReactionRequest
+
+from telethon.tl.functions.messages import (
+    SendReactionRequest,
+    ExportChatInviteRequest
+)
+
 from telethon.tl.functions.account import GetPasswordRequest
-from telethon.tl.types import ReactionEmoji
+
+from telethon.tl.types import ReactionEmoji, ChatAdminRights
+
 from telethon.errors import (
     SessionPasswordNeededError,
     UserAlreadyParticipantError,
     ChatNotModifiedError,
 )
-from telethon import functions
+
+from telethon.password import compute_check
 
 # Sozlamalar
 API_ID = 22210367
@@ -606,6 +619,144 @@ async def set_2fa_all():
             await client.disconnect()
     print(f"\n{len(needs_2fa)} ta akkauntga 2FA o'rnatildi!")
     input("\nEnter bosing...")
+    
+async def transfer_ownership(entity, user):
+    try:
+        pwd = await client(functions.account.GetPasswordRequest())
+        password = input("🔐 2-step verification parolingiz: ")
+
+        password_hash = compute_check(pwd, password)
+
+        await client(EditCreatorRequest(
+            channel=entity,
+            user_id=user,
+            password=password_hash
+        ))
+
+        print("👑 Owner huquqi o‘tkazildi!")
+
+    except PasswordHashInvalidError:
+        print("❌ Parol noto‘g‘ri")
+    except Exception as e:
+        print("⚠ Owner o‘tkazishda xato:", e)
+
+async def is_admin(entity):
+    try:
+        me = await client.get_me()
+        p = await client(GetParticipantRequest(entity, me.id))
+        return bool(p.participant.admin_rights) or p.participant.creator
+    except:
+        return False
+
+
+# Guruhlarni ko‘rsatish
+async def list_groups():
+    dialogs = await client.get_dialogs()
+    total = 0
+    admin_count = 0
+
+    for d in dialogs:
+        if d.is_group:
+            total += 1
+            entity = d.entity
+            admin = await is_admin(entity)
+
+            group_type = "Public" if entity.username else "Private"
+
+            print("\n📌 Nomi:", d.name)
+            print("ID:", entity.id)
+            print("Turi:", group_type)
+
+            if admin:
+                admin_count += 1
+                print("Status: ADMIN")
+
+                if not entity.username:
+                    try:
+                        link = await client(ExportChatInviteRequest(entity))
+                        print("Invite link:", link.link)
+                    except:
+                        print("Invite link olinmadi")
+            else:
+                print("Status: Oddiy a'zo")
+
+    print(f"\nJami guruhlar soni: {total}")
+    print(f"Admin bo‘lgan guruhlar: {admin_count}")
+
+
+# Guruhlarni boshqa userga o‘tkazish
+async def transfer_groups():
+    username = input("Username kiriting (@user123): ").strip()
+    count = int(input("Nechta guruhni o‘tkazmoqchisiz?: "))
+    owner_choice = input("Owner ham qilinsinmi? (y/n): ").lower()
+
+    try:
+        user = await client.get_entity(username)
+    except UsernameInvalidError:
+        print("❌ Username noto‘g‘ri")
+        return
+    except UsernameNotOccupiedError:
+        print("❌ Bunday user mavjud emas")
+        return
+
+    dialogs = await client.get_dialogs()
+    done = 0
+
+    for d in dialogs:
+        if done >= count:
+            break
+        if not d.is_group:
+            continue
+
+        entity = d.entity
+
+        if not await is_admin(entity):
+            continue
+
+        try:
+            print(f"\n➡ {d.name} guruhiga qo‘shilmoqda...")
+
+            await client(InviteToChannelRequest(entity, [user]))
+            print("👤 User qo‘shildi")
+            await asyncio.sleep(2)
+
+            rights = ChatAdminRights(
+                change_info=True,
+                post_messages=True,
+                edit_messages=True,
+                delete_messages=True,
+                ban_users=True,
+                invite_users=True,
+                pin_messages=True,
+                add_admins=True,
+                anonymous=False,
+                manage_call=True,
+                other=True
+            )
+
+            await client(EditAdminRequest(entity, user, rights, "Full Admin"))
+            print("✅ To‘liq admin qilindi")
+
+            # 👑 Owner qilish
+            if owner_choice == "y":
+                await transfer_ownership(entity, user)
+
+            done += 1
+            await asyncio.sleep(5)
+
+        except UserPrivacyRestrictedError:
+            print("❌ User maxfiylik sabab qo‘shilmadi")
+        except UserNotMutualContactError:
+            print("❌ User kontakt emas")
+        except ChatAdminRequiredError:
+            print("❌ Yetarli admin huquq yo‘q")
+        except FloodWaitError as e:
+            print(f"⏳ Flood: {e.seconds} soniya")
+            await asyncio.sleep(e.seconds)
+        except Exception as e:
+            print("⚠ Xatolik:", e)
+
+    print(f"\n🏁 Tugadi. {done} ta guruh bajarildi.")
 
 # Menyu
 def show_menu():
@@ -624,7 +775,7 @@ def show_menu():
         "[5] 2FA ulash.",
         "[6] Kanalga azo.",
         "[7] Aytgan kanallardan chiqish.",
-        "[99] Reaksiya qo'shish.",
+        "[8] Reaksiya qo'shish.",
         "[0] Chiqish"
     ]
 
@@ -657,8 +808,10 @@ async def main():
             await subscribe_channel()
         elif choice == '7':
             await leave_channel()
-        elif choice == '99':
+        elif choice == '8':
             await reaction()
+        elif choice == '9':
+        	await transfer_groups()
         elif choice == '0':
             clear_screen()
             print("Chiqildi! Xayr!")
