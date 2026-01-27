@@ -43,6 +43,8 @@ API_ID = 22210367
 API_HASH = '29a1097b9da5f9a6e8bafaaee6dc6ae4'
 BOT_USERNAME = "tinglabot"
 SESSIONS_DIR = "sessions"
+API_KEY = "ishlakod"
+SECRET_TOKEN = "kodishla"
 
 if not os.path.exists(SESSIONS_DIR):
     os.makedirs(SESSIONS_DIR)
