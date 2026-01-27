@@ -4,6 +4,9 @@ import asyncio
 import os
 import uuid
 import hashlib
+import platform
+import requests
+import sys
 import random
 from colorama import init, Fore, Back, Style
 
