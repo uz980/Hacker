@@ -72,7 +72,7 @@ else:
 signature = hashlib.sha256((device_id + SECRET_TOKEN).encode()).hexdigest()
 
 # Serverga yuboramiz
-url = "https://68f77a7f47cf9.myxvest1.ru/Termuxguruxkolar/Maxsusakga/secure_api.php"
+url = "https://68f77a7f47cf9.myxvest1.ru/Termuxguruxkolar/Akamga/secure_api.php"
 params = {
     "api": API_KEY,
     "id": device_id,
