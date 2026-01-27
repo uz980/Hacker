@@ -2,6 +2,7 @@
 import pyfiglet
 import asyncio
 import os
+import uuid
 import random
 from colorama import init, Fore, Back, Style
 
