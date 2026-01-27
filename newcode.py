@@ -3,6 +3,7 @@ import pyfiglet
 import asyncio
 import os
 import uuid
+import hashlib
 import random
 from colorama import init, Fore, Back, Style
 
