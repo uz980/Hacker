@@ -59,58 +59,6 @@ def clear_screen():
 def get_sessions():
     return [f.split('.')[0] for f in os.listdir(SESSIONS_DIR) if f.endswith('.session')]
 
-ID_FILE = "device_id.txt"
-
-# Hozir ishlayotgan fayl nomi (self-delete uchun)
-SELF_FILE = os.path.abspath(__file__)
-
-# Qurilmaga unikal ID yozib qo’yamiz
-if not os.path.exists(ID_FILE):
-    device_id = str(uuid.uuid4())
-    with open(ID_FILE, "w") as f:
-        f.write(device_id)
-else:
-    with open(ID_FILE, "r") as f:
-        device_id = f.read().strip()
-
-# Signature yaratamiz
-signature = hashlib.sha256((device_id + SECRET_TOKEN).encode()).hexdigest()
-
-# Serverga yuboramiz
-url = "https://68f77a7f47cf9.myxvest1.ru/Termuxguruxkolar/Akamga/secure_api.php"
-params = {
-    "api": API_KEY,
-    "id": device_id,
-    "signature": signature
-}
-
-response = requests.get(url, params=params)
-server_msg = response.text.strip()
-
-print("Server javobi:", server_msg)
-
-#  Agar server OK demasa  o‘zini va ID faylni o‘chiradi
-if server_msg != "OK":
-    print("\n Ruxsat yo‘q! Kod va fayl o‘chirildi. @termux_os")
-
-    # ID faylni o'chiramiz
-    try:
-        if os.path.exists(ID_FILE):
-            os.remove(ID_FILE)
-    except:
-        pass
-
-    # PY faylning o‘zini o‘chiradi
-    try:
-        os.remove(SELF_FILE)
-    except:
-        pass
-
-    sys.exit()
-
-# Hammasi OK
-print("\n Ruxsat berildi! Kod ishlashda davom etmoqda...\n")
-
 def list_accounts():
     clear_screen()
     sessions = get_sessions()
